@@ -12,15 +12,16 @@
 #include <EEPROM.h>
 #include <TimerOne.h>
 
-// Variáveis utilizadas no programa
-byte temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
-byte segundo = 0, temperatura = 0;
-int i = 0;
+// Variáveis utilizadas no programa. byte +-128
+int temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
+byte segundo = 0, temperatura = 0, janela_fechada = 0, janela_aberta = 0, alarme = 0;
+int i = 0, alarmecount = 0;
 
+// Pinos utilizados
 // Rele para abrir, fechar e sirene;
 // Botão para menu, decrementar e incrementar;
-int rele_abre = 3, rele_fecha = 5, rele_sirene = 7, input_menu = 8, input_dec = 9, input_inc = 10;
-int fim_curso_abre = 4, fim_curso_fecha = 6, janela_fechada = 0, janela_aberta = 0;
+int rele_abre = 3, rele_fecha = 5, rele_alarme = 7, input_menu = 8, input_dec = 9, input_inc = 10;
+int fim_curso_abre = 4, fim_curso_fecha = 6;
 
 void setup() 
 {
@@ -45,7 +46,8 @@ void loop() {
   if(segundo == 1)
   {
     segundo = 0;
-    
+
+    // LM35
     // VOUT = 1500 mV at 150°C
     // VOUT = 250 mV at 25°C
     // VOUT = –550 mV at –55°C
@@ -62,11 +64,13 @@ void loop() {
       if(janela_fechada == 0) // flag para indicar que a janela já está fechada e não precisa entrar aqui.
       {
         janela_fechada = 1;
+        janela_aberta = 0;
         Serial.print("Fechando Ar\n"); 
         digitalWrite(rele_abre, LOW); // Desliga o outro rele para garantir que não vai dar curto na fonte.
         delay(300); // Aguarda 300ms para garantir que o rele está desligado.
         digitalWrite(rele_fecha, HIGH);
-        while(digitalRead(fim_curso_fecha)){} //Fica preso aqui até que o input se torne 0.
+        while(digitalRead(fim_curso_fecha)==1){
+          } //Fica preso aqui até que o input se torne 0.
         digitalWrite(rele_fecha, LOW);
         Serial.print("Janela fechada\n"); 
       }
@@ -78,16 +82,30 @@ void loop() {
       if(janela_aberta == 0) // flag para indicar que a janela já está aberta e não precisa entrar aqui.
       {
         janela_aberta = 1;
+        janela_fechada = 0;
         Serial.print("Abrindo Ar\n"); 
         digitalWrite(rele_fecha, LOW); // Desliga o outro rele para garantir que não vai dar curto na fonte.
         delay(300); // Aguarda 300ms para garantir que o rele está desligado.
         digitalWrite(rele_abre, HIGH);
-        while(digitalRead(fim_curso_fecha)){} //Fica preso aqui até que o input se torne 0.
+        while(digitalRead(fim_curso_fecha)==1){} //Fica preso aqui até que o input se torne 0.
         digitalWrite(rele_abre, LOW);
         Serial.print("Janela aberta\n"); 
       }
     }
 
+    // Acionamento da sirene
+    if(temperatura > temp_alarme)
+    {
+      if(alarme == 0) // flag para indicar que já tocou o alarme.
+      {
+        alarme = 1;
+        Serial.print("Acionando Alarme\n"); 
+        digitalWrite(rele_alarme, HIGH); // Liga o alarme.
+        alarmecount = 10;
+      }
+    }else{
+      alarme = 0;
+    }
 
     
   }
@@ -107,6 +125,14 @@ void timerIsr()
       i = 0;
     }
   /////////////////////////////////////
+
+    if (alarmecount > 0){
+      alarmecount--;
+    }else{
+      digitalWrite(rele_alarme, LOW); // Desliga o alarme depois de zerar alarmecount.
+    }
+
+
     
 }
 
@@ -136,17 +162,14 @@ void inicializa_timer1()
 /// --------------------------
 /// Inicialização dos pinos digitais
 /// --------------------------
-
-
-
 void inicializa_gpio() // Verificar os pinos escolhidos
 {  
   pinMode(rele_abre, OUTPUT);
   digitalWrite(rele_abre, LOW);
   pinMode(rele_fecha, OUTPUT);
   digitalWrite(rele_fecha, LOW);
-  pinMode(rele_sirene, OUTPUT);
-  digitalWrite(rele_sirene, LOW); 
+  pinMode(rele_alarme, OUTPUT);
+  digitalWrite(rele_alarme, LOW); 
   
   pinMode(fim_curso_abre, INPUT);
   pinMode(fim_curso_fecha, INPUT);
@@ -161,14 +184,14 @@ void inicializa_gpio() // Verificar os pinos escolhidos
 void inicializa_eeprom()
 {  
 // Inicializa os limites de temperatura para o primeiro uso
-if(EEPROM.read(0) == 5){ // Se está escrito 5 no endereço 0 é porque o uC já foi inicializado, então lê os valores da memória.
+if(EEPROM.read(0) == 78){ // Se está escrito 5 no endereço 0 é porque o uC já foi inicializado, então lê os valores da memória.
   temp_max = EEPROM.read(1);
   temp_min = EEPROM.read(2);
   temp_alarme = EEPROM.read(3);  
   }
   else // Senão inicializa com os seguintes valores
   {
-  EEPROM.write(0,5); // Valor para identificar que o uC já foi inicializado antes.
+  EEPROM.write(0,78); // Valor para identificar que o uC já foi inicializado antes.
   EEPROM.write(1,temp_max);
   EEPROM.write(2,temp_min);
   EEPROM.write(3,temp_alarme);
@@ -190,7 +213,7 @@ if(EEPROM.read(0) == 5){ // Se está escrito 5 no endereço 0 é porque o uC já
 /// --------------------------
 
 // Configurar conforme os pinos do hardware obedecendo a ordem abaixo.
-// inputs: DIN pin, CLK pin, LOAD pin. number of chips
+// inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
 LedControl mydisplay = LedControl(2, 1, 0, 1);
 
 void inicializa_display()
@@ -200,9 +223,9 @@ void inicializa_display()
   mydisplay.setIntensity(0, 15); // 0 a 15 = brightest
   mydisplay.setScanLimit(0,7); // de 0 a 7 Indica quantos dígitos serão ligados.
   mydisplay.setDigit(0, 0, 0, false); //setDigit(int addr, int digit, byte value, boolean dp)
-  mydisplay.setDigit(0, 1, 0, false);
+  mydisplay.setDigit(0, 1, 0, false); // setDigit(chip, posição, número, naosei)
   mydisplay.setDigit(0, 2, 0, false);
-  mydisplay.setDigit(0, 3, 0, false);
+  mydisplay.setDigit(0, 3, 0, false); //testar com true
   mydisplay.setDigit(0, 4, 0, false);
   mydisplay.setDigit(0, 5, 0, false);
   mydisplay.setDigit(0, 6, 0, false);
