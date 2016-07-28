@@ -14,7 +14,7 @@
 
 // Variáveis utilizadas no programa. byte +-128
 int temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
-byte segundo = 0, temperatura = 0, janela_fechada = 0, janela_aberta = 0, alarme = 0;
+byte segundo = 0, temperatura = 0, janela_fechada = 0, janela_aberta = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
 int i = 0, alarmecount = 0;
 
 // Pinos utilizados
@@ -22,6 +22,9 @@ int i = 0, alarmecount = 0;
 // Botão para menu, decrementar e incrementar;
 int rele_abre = 3, rele_fecha = 5, rele_alarme = 7, input_menu = 8, input_dec = 9, input_inc = 10;
 int fim_curso_abre = 4, fim_curso_fecha = 6;
+
+// inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
+LedControl mydisplay = LedControl(2, 1, 0, 1);
 
 void setup() 
 {
@@ -57,6 +60,14 @@ void loop() {
     Serial.print("Temperatura = ");
     Serial.print(temperatura);
     Serial.print("\n");
+
+    // Escreve temperatura no display
+    digito = temperatura / 100;
+    mydisplay.setDigit(0, 2, digito, false); // centena
+    digito = (temperatura % 100 ) / 10;
+    mydisplay.setDigit(0, 1, digito, false); // dezena
+    digito = (temperatura % 100 ) % 10;    
+    mydisplay.setDigit(0, 0, digito, false); // unidade
 
     // Tempertaura menor que a mínima fecha a janela
     if(temperatura < temp_min)
@@ -117,6 +128,8 @@ void loop() {
 /// --------------------------
 void timerIsr()
 {
+  boolean piscapisca = false;
+  
   ///// Conta 1 segundo. //////
     i++; // incrementa i a cada 200ms;
     if(i == 5)
@@ -132,7 +145,15 @@ void timerIsr()
       digitalWrite(rele_alarme, LOW); // Desliga o alarme depois de zerar alarmecount.
     }
 
+  //////////////////////////////
 
+  if(pisca_display == 1)
+  {
+    piscapisca = !piscapisca;
+    mydisplay.shutdown(0, piscapisca);  // alterna entre true e false
+  }else {
+    mydisplay.shutdown(0, false);  // turns on display
+  }
     
 }
 
@@ -141,8 +162,117 @@ void timerIsr()
 /// --------------------------
 /// Menu para seleção dos limites de temperatura
 /// --------------------------
+// input_menu = 8, input_dec = 9, input_inc = 10;
 void verifica_menu()
 {
+  if(digitalRead(input_menu) == 1){ // caso apertou botão pela primeira vez, incrementa a seleção do menu, pisca display e entra no while abaixo
+    while(digitalRead(input_menu) == 1){ // aguarda o botão ser solto
+      }
+    menu_select++;
+    pisca_display = 1;
+  }
+
+  while(menu_select > 0){ // Fica aqui dentro até passar por todo menu, voltando a ser zero.
+    switch (menu_select) { //case com o menu select para selecionar o que será alterado
+      case 1: // Seleção da temperatura mínima
+        //do something when var equals 1
+        
+        // Escreve temperatura atual no display
+        digito = temp_min / 100;
+        mydisplay.setDigit(0, 2, digito, false); // centena
+        digito = (temp_min % 100 ) / 10;
+        mydisplay.setDigit(0, 1, digito, false); // dezena
+        digito = (temp_min % 100 ) % 10;    
+        mydisplay.setDigit(0, 0, digito, false); // unidade
+        delay(100); //delay apenas para evitar que o display fique piscando.
+        
+        if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
+          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
+            }
+          temp_min--;
+        }  
+                   
+        if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
+          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
+            }
+          temp_min++;
+        }        
+       
+        break;
+      case 2:
+        //do something when var equals 2
+        
+        // Escreve temperatura atual no display
+        digito = temp_max / 100;
+        mydisplay.setDigit(0, 2, digito, false); // centena
+        digito = (temp_max % 100 ) / 10;
+        mydisplay.setDigit(0, 1, digito, false); // dezena
+        digito = (temp_max % 100 ) % 10;    
+        mydisplay.setDigit(0, 0, digito, false); // unidade
+        delay(100); //delay apenas para evitar que o display fique piscando.
+        
+        if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
+          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
+            }
+          temp_max--;
+        }  
+                   
+        if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
+          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
+            }
+          temp_max++;
+        }  
+        
+        break;
+        case 3:
+        //do something when var equals 3
+        
+        // Escreve temperatura atual no display
+        digito = temp_alarme / 100;
+        mydisplay.setDigit(0, 2, digito, false); // centena
+        digito = (temp_alarme % 100 ) / 10;
+        mydisplay.setDigit(0, 1, digito, false); // dezena
+        digito = (temp_alarme % 100 ) % 10;    
+        mydisplay.setDigit(0, 0, digito, false); // unidade
+        delay(100); //delay apenas para evitar que o display fique piscando.
+        
+        if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
+          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
+            }
+          temp_alarme--;
+        }  
+                   
+        if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
+          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
+            }
+          temp_alarme++;
+        }  
+        
+        break;
+      default: 
+        // if nothing else matches, do the default
+        // default is optional
+      break;
+    }  
+  
+    if(digitalRead(input_menu) == 1){ // caso apertou botão, incrementa a seleção do menu
+      while(digitalRead(input_menu) == 1){ // aguarda o botão ser solto
+        }
+      menu_select++;
+      if(menu_select>3)
+      {
+        menu_select = 0;
+        pisca_display = 0;
+        EEPROM.write(1,temp_max);
+        EEPROM.write(2,temp_min);
+        EEPROM.write(3,temp_alarme);
+      }
+    }
+
+  }
+
+
+
     
 }
 
@@ -213,8 +343,6 @@ if(EEPROM.read(0) == 78){ // Se está escrito 5 no endereço 0 é porque o uC j�
 /// --------------------------
 
 // Configurar conforme os pinos do hardware obedecendo a ordem abaixo.
-// inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
-LedControl mydisplay = LedControl(2, 1, 0, 1);
 
 void inicializa_display()
 {
