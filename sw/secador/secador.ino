@@ -6,28 +6,43 @@
  */
 
 
-
 // Bibliotecas utilizadas no projeto
 #include <LedControl.h>
 #include <EEPROM.h>
 #include <TimerOne.h>
+#include <LiquidCrystal.h> // http://blog.filipeflop.com/display/controlando-um-lcd-16x2-com-arduino.html
+
+///////////// Pinos utilizados  /////////////////////
+// inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
+LedControl mydisplay = LedControl(2, 1, 0, 1);
+
+// Rele para abrir, fechar e sirene, fim de curso;
+int rele_abre = 3, fim_curso_abre = 4, rele_fecha = 5, fim_curso_fecha = 6, rele_alarme = 7;
+
+// Botão para menu, decrementar e incrementar;
+int input_menu = 8, input_dec = 9, input_inc = 10;
+
+// Define os pinos que serão utilizados para ligação ao display
+// LiquidCrystal lcd(<pino RS>, <pino enable>, <pino D4>, <pino D5>, <pino D6>, <pino D7>)
+LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será necessário utilizar os canais analógicos como digital.
+//////////////////////////////////////////////////////
+
 
 // Variáveis utilizadas no programa. byte +-128
 int temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
 byte segundo = 0, temperatura = 0, janela_fechada = 0, janela_aberta = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
-int i = 0, alarmecount = 0;
+int i = 0, alarmecount = 0, pisca_count = 0, pisca_delay = 0;
 
-// Pinos utilizados
-// Rele para abrir, fechar e sirene;
-// Botão para menu, decrementar e incrementar;
-int rele_abre = 3, rele_fecha = 5, rele_alarme = 7, input_menu = 8, input_dec = 9, input_inc = 10;
-int fim_curso_abre = 4, fim_curso_fecha = 6;
-
-// inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
-LedControl mydisplay = LedControl(2, 1, 0, 1);
 
 void setup() 
 {
+  lcd.begin(16, 2);
+  lcd.clear(); //Limpa a tela
+  lcd.setCursor(0, 0); //Posiciona o cursor na coluna 0, linha 0;
+  lcd.print("Display"); //Envia o texto entre aspas para o LCD
+  lcd.setCursor(0, 1); //Posiciona o cursor na coluna 0, linha 1;
+  lcd.print("Inicializado"); //Envia o texto entre aspas para o LCD
+  
   // initialize serial communications at 9600 bps:
   Serial.begin(9600); // testa com 9600 mas depois aumenta para o máximo que der, para o uC não perder tempo escrevendo
   Serial.print("Iniciando a configuração\n");
@@ -59,7 +74,7 @@ void loop() {
     temperatura = (analogRead(0)*500) / 1023; // Lê o canal 0
     Serial.print("Temperatura = ");
     Serial.print(temperatura);
-    Serial.print("\n");
+    Serial.print("C\n");
 
     // Escreve temperatura no display
     digito = temperatura / 100;
@@ -138,21 +153,30 @@ void timerIsr()
       i = 0;
     }
   /////////////////////////////////////
-
+   // Contador para desligar o alarme.
     if (alarmecount > 0){
       alarmecount--;
     }else{
       digitalWrite(rele_alarme, LOW); // Desliga o alarme depois de zerar alarmecount.
+      Serial.print("Alarme desligado\n");
     }
 
   //////////////////////////////
-
+  // código para piscar o display de acordo com o menu selecionado.
   if(pisca_display == 1)
   {
-    piscapisca = !piscapisca;
-    mydisplay.shutdown(0, piscapisca);  // alterna entre true e false
-  }else {
+    // Delay para piscar em frequência diferente de acordo com o menu.
+    pisca_count++;
+    if(pisca_count > pisca_delay)
+    {
+      piscapisca = !piscapisca;
+      mydisplay.shutdown(0, piscapisca);  // alterna entre true e false
+      pisca_count = 0;
+    }
+  }else 
+  {
     mydisplay.shutdown(0, false);  // turns on display
+    pisca_count = 0;
   }
     
 }
@@ -165,86 +189,94 @@ void timerIsr()
 // input_menu = 8, input_dec = 9, input_inc = 10;
 void verifica_menu()
 {
-  if(digitalRead(input_menu) == 1){ // caso apertou botão pela primeira vez, incrementa a seleção do menu, pisca display e entra no while abaixo
-    while(digitalRead(input_menu) == 1){ // aguarda o botão ser solto
-      }
+  
+  // caso apertou botão menu pela primeira vez, incrementa a seleção do menu, pisca display e entra no while abaixo até o botão ser solto.
+  if(digitalRead(input_menu) == 1){ 
+    while(digitalRead(input_menu) == 1){} // aguarda o botão ser solto
+    Serial.print("MENU\n");
     menu_select++;
     pisca_display = 1;
   }
-
-  while(menu_select > 0){ // Fica aqui dentro até passar por todo menu, voltando a ser zero.
-    switch (menu_select) { //case com o menu select para selecionar o que será alterado
+  
+  // Fica aqui dentro até passar por todo menu, voltando a ser zero.
+  while(menu_select > 0)
+  {
+    switch (menu_select) //case com o menu select para selecionar o que será alterado
+    { 
       case 1: // Seleção da temperatura mínima
-        //do something when var equals 1
-        
-        // Escreve temperatura atual no display
+        Serial.print("Seleção da temperatura mínima\n");
+        Serial.print("Valor: ");
+        Serial.print(temp_min);
+        Serial.print("C\n");
+        pisca_delay = 5; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
+        // Escreve temperatura mínima atual no display.
         digito = temp_min / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
         digito = (temp_min % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
         digito = (temp_min % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
-        delay(100); //delay apenas para evitar que o display fique piscando.
+        delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
-          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_min--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
-          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_min++;
         }        
        
         break;
-      case 2:
-        //do something when var equals 2
-        
-        // Escreve temperatura atual no display
+      case 2: // Seleção da temperatura máxima
+        Serial.print("Seleção da temperatura máxima\n");
+        Serial.print("Valor: ");
+        Serial.print(temp_max);
+        Serial.print("C\n");
+        pisca_delay = 3; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
+        // Escreve temperatura máxima atual no display
         digito = temp_max / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
         digito = (temp_max % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
         digito = (temp_max % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
-        delay(100); //delay apenas para evitar que o display fique piscando.
+        delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
-          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_max--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
-          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_max++;
         }  
         
         break;
-        case 3:
-        //do something when var equals 3
-        
-        // Escreve temperatura atual no display
+        case 3: // Seleção da temperatura alarme
+        Serial.print("Seleção da temperatura de alarme\n");
+        Serial.print("Valor: ");
+        Serial.print(temp_alarme);
+        Serial.print("C\n");
+        pisca_delay = 0; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
+        // Escreve temperatura alarme atual no display
         digito = temp_alarme / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
         digito = (temp_alarme % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
         digito = (temp_alarme % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
-        delay(100); //delay apenas para evitar que o display fique piscando.
+        delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
-          while(digitalRead(input_dec) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_alarme--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
-          while(digitalRead(input_inc) == 1){ // aguarda o botão ser solto
-            }
+          delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
           temp_alarme++;
         }  
         
@@ -254,18 +286,30 @@ void verifica_menu()
         // default is optional
       break;
     }  
-  
-    if(digitalRead(input_menu) == 1){ // caso apertou botão, incrementa a seleção do menu
-      while(digitalRead(input_menu) == 1){ // aguarda o botão ser solto
-        }
+
+    // caso apertou botão, incrementa a seleção do menu
+    if(digitalRead(input_menu) == 1)
+    { 
+      while(digitalRead(input_menu) == 1){} // aguarda o botão ser solto
       menu_select++;
-      if(menu_select>3)
+      if(menu_select>3) // chegou ao final do menu.
       {
-        menu_select = 0;
+        Serial.print("Final do Menu, gravando valores\n");
+        Serial.print("Temperatura máxima: ");
+        Serial.print(temp_max);
+        Serial.print("C\n");
+        Serial.print("Temperatura mínima: ");
+        Serial.print(temp_min);
+        Serial.print("C\n");
+        Serial.print("Temperatura alarme: ");
+        Serial.print(temp_alarme);
+        Serial.print("C\n");
+        menu_select = 0; // sai do menu, para de piscar o display e grava os valores na memória.
         pisca_display = 0;
         EEPROM.write(1,temp_max);
         EEPROM.write(2,temp_min);
         EEPROM.write(3,temp_alarme);
+        Serial.print("Dados gravados!\n");
       }
     }
 
