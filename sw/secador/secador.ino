@@ -30,7 +30,7 @@ LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será neces
 
 // Variáveis utilizadas no programa. byte +-128
 int temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
-byte segundo = 0, temperatura = 0, janela_fechada = 0, janela_aberta = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
+byte segundo = 0, temperatura = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
 int i = 0, alarmecount = 0, pisca_count = 0, pisca_delay = 0;
 
 
@@ -87,17 +87,14 @@ void loop() {
     // Tempertaura menor que a mínima fecha a janela
     if(temperatura < temp_min)
     {
-      if(janela_fechada == 0) // flag para indicar que a janela já está fechada e não precisa entrar aqui.
+      if(digitalRead(fim_curso_fecha) == 1)         // Verifica se a janela ainda não está fechada.
       {
-        janela_fechada = 1;
-        janela_aberta = 0;
         Serial.print("Fechando Ar\n"); 
-        digitalWrite(rele_abre, LOW); // Desliga o outro rele para garantir que não vai dar curto na fonte.
-        delay(300); // Aguarda 300ms para garantir que o rele está desligado.
-        digitalWrite(rele_fecha, HIGH);
-        while(digitalRead(fim_curso_fecha)==1){
-          } //Fica preso aqui até que o input se torne 0.
-        digitalWrite(rele_fecha, LOW);
+        digitalWrite(rele_abre, HIGH);              // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        delay(300);                                 // Aguarda 300ms para garantir que o rele está desligado.
+        digitalWrite(rele_fecha, LOW);              // Liga o relé para fechar. 
+        while(digitalRead(fim_curso_fecha)==1){}    // Fica preso aqui até que o input se torne 0.
+        digitalWrite(rele_fecha, HIGH);             // Desliga o relé depois de atingir o fim de curso.
         Serial.print("Janela fechada\n"); 
       }
     }
@@ -105,16 +102,14 @@ void loop() {
     // Tempertaura maior que a máxima abre a janela
     if(temperatura > temp_max)
     {
-      if(janela_aberta == 0) // flag para indicar que a janela já está aberta e não precisa entrar aqui.
+      if(digitalRead(fim_curso_abre) == 1)          // Verifica se a janela ainda não está aberta.
       {
-        janela_aberta = 1;
-        janela_fechada = 0;
         Serial.print("Abrindo Ar\n"); 
-        digitalWrite(rele_fecha, LOW); // Desliga o outro rele para garantir que não vai dar curto na fonte.
-        delay(300); // Aguarda 300ms para garantir que o rele está desligado.
-        digitalWrite(rele_abre, HIGH);
-        while(digitalRead(fim_curso_fecha)==1){} //Fica preso aqui até que o input se torne 0.
-        digitalWrite(rele_abre, LOW);
+        digitalWrite(rele_fecha, HIGH);             // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        delay(300);                                 // Aguarda 300ms para garantir que o rele está desligado.
+        digitalWrite(rele_abre, LOW);               // Liga o relé para abrir.
+        while(digitalRead(fim_curso_abre)==1){}     // Fica preso aqui até que o input se torne 0.
+        digitalWrite(rele_abre, HIGH);              // Desliga o relé depois de atingir o fim de curso.
         Serial.print("Janela aberta\n"); 
       }
     }
@@ -126,7 +121,7 @@ void loop() {
       {
         alarme = 1;
         Serial.print("Acionando Alarme\n"); 
-        digitalWrite(rele_alarme, HIGH); // Liga o alarme.
+        digitalWrite(rele_alarme, LOW); // Liga o alarme.
         alarmecount = 10;
       }
     }else{
@@ -157,8 +152,12 @@ void timerIsr()
     if (alarmecount > 0){
       alarmecount--;
     }else{
-      digitalWrite(rele_alarme, LOW); // Desliga o alarme depois de zerar alarmecount.
-      Serial.print("Alarme desligado\n");
+      if (alarmecount == 0){
+        digitalWrite(rele_alarme, HIGH);        // Desliga o alarme depois de zerar alarmecount.
+        Serial.print("Alarme desligado\n");     // Escreve na tela apenas uma vez.
+      }else{
+        digitalWrite(rele_alarme, HIGH);        // Mantém o alarme desligado.
+      }
     }
 
   //////////////////////////////
