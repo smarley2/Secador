@@ -29,7 +29,7 @@ LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será neces
 
 
 // Variáveis utilizadas no programa. byte +-128
-int temp_max = 120, temp_min = 110, temp_alarme = 125; //Valores default para primeira inicialização.
+int temp_ref = 120, temp_alarme_min = 110, temp_alarme_max = 125; //Valores default para primeira inicialização.
 byte segundo = 0, temperatura = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
 int i = 0, alarmecount = 0, pisca_count = 0, pisca_delay = 0;
 
@@ -85,7 +85,7 @@ void loop() {
     mydisplay.setDigit(0, 0, digito, false); // unidade
 
     // Tempertaura menor que a mínima fecha a janela
-    if(temperatura < temp_min)
+    if(temperatura < (temp_ref - 2))
     {
       if(digitalRead(fim_curso_fecha) == 1)         // Verifica se a janela ainda não está fechada.
       {
@@ -100,7 +100,7 @@ void loop() {
     }
 
     // Tempertaura maior que a máxima abre a janela
-    if(temperatura > temp_max)
+    if(temperatura > (temp_ref + 2))
     {
       if(digitalRead(fim_curso_abre) == 1)          // Verifica se a janela ainda não está aberta.
       {
@@ -115,7 +115,7 @@ void loop() {
     }
 
     // Acionamento da sirene
-    if(temperatura > temp_alarme)
+    if(temperatura > temp_alarme_max)
     {
       if(alarme == 0) // flag para indicar que já tocou o alarme.
       {
@@ -202,81 +202,81 @@ void verifica_menu()
   {
     switch (menu_select) //case com o menu select para selecionar o que será alterado
     { 
-      case 1: // Seleção da temperatura mínima
-        Serial.print("Seleção da temperatura mínima\n");
+      case 1: // Seleção da temperatura de operação.
+        Serial.print("Seleção da temperatura de operação\n");
         Serial.print("Valor: ");
-        Serial.print(temp_min);
+        Serial.print(temp_ref);
         Serial.print("C\n");
         pisca_delay = 5; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
-        // Escreve temperatura mínima atual no display.
-        digito = temp_min / 100;
+        // Escreve temperatura de operação atual no display.
+        digito = temp_ref / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
-        digito = (temp_min % 100 ) / 10;
+        digito = (temp_ref % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
-        digito = (temp_min % 100 ) % 10;    
+        digito = (temp_ref % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
         delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_min--;
+          temp_ref--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_min++;
+          temp_ref++;
         }        
        
         break;
-      case 2: // Seleção da temperatura máxima
-        Serial.print("Seleção da temperatura máxima\n");
+      case 2: // Seleção da temperatura máxima para acionar o alarme
+        Serial.print("Seleção da temperatura máxima para acionar o alarme.\n");
         Serial.print("Valor: ");
-        Serial.print(temp_max);
+        Serial.print(temp_alarme_max);
         Serial.print("C\n");
         pisca_delay = 3; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
-        // Escreve temperatura máxima atual no display
-        digito = temp_max / 100;
+        // Escreve temperatura máxima para acionar o alarme atual no display
+        digito = temp_alarme_max / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
-        digito = (temp_max % 100 ) / 10;
+        digito = (temp_alarme_max % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
-        digito = (temp_max % 100 ) % 10;    
+        digito = (temp_alarme_max % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
         delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_max--;
+          temp_alarme_max--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_max++;
+          temp_alarme_max++;
         }  
         
         break;
-        case 3: // Seleção da temperatura alarme
-        Serial.print("Seleção da temperatura de alarme\n");
+        case 3: // Seleção da temperatura mínima para acionar o alarme
+        Serial.print("Seleção da temperatura mínima para acionar o alarme.\n");
         Serial.print("Valor: ");
-        Serial.print(temp_alarme);
+        Serial.print(temp_alarme_min);
         Serial.print("C\n");
         pisca_delay = 0; // Indica a taxa que irá piscar o display na função do timer para representar o menu_select.
         // Escreve temperatura alarme atual no display
-        digito = temp_alarme / 100;
+        digito = temp_alarme_min / 100;
         mydisplay.setDigit(0, 2, digito, false); // centena
-        digito = (temp_alarme % 100 ) / 10;
+        digito = (temp_alarme_min % 100 ) / 10;
         mydisplay.setDigit(0, 1, digito, false); // dezena
-        digito = (temp_alarme % 100 ) % 10;    
+        digito = (temp_alarme_min % 100 ) % 10;    
         mydisplay.setDigit(0, 0, digito, false); // unidade
         delay(100); //delay apenas para evitar que o display fique piscando enquanto não aperta nenhum botão.
         
         if(digitalRead(input_dec) == 1){ // Verifica se apertou o botão para decrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_alarme--;
+          temp_alarme_min--;
         }  
                    
         if(digitalRead(input_inc) == 1){ // Verifica se apertou o botão para incrementar
           delay(100); //Aguarda 100ms para possibilitar modificar continuamente.
-          temp_alarme++;
+          temp_alarme_min++;
         }  
         
         break;
@@ -294,20 +294,20 @@ void verifica_menu()
       if(menu_select>3) // chegou ao final do menu.
       {
         Serial.print("Final do Menu, gravando valores\n");
-        Serial.print("Temperatura máxima: ");
-        Serial.print(temp_max);
+        Serial.print("Temperatura de Operação: ");
+        Serial.print(temp_ref);
         Serial.print("C\n");
-        Serial.print("Temperatura mínima: ");
-        Serial.print(temp_min);
+        Serial.print("Temperatura mínima de acionamento do alarme: ");
+        Serial.print(temp_alarme_min);
         Serial.print("C\n");
-        Serial.print("Temperatura alarme: ");
-        Serial.print(temp_alarme);
+        Serial.print("Temperatura máxima de acionamento do alarme: ");
+        Serial.print(temp_alarme_max);
         Serial.print("C\n");
         menu_select = 0; // sai do menu, para de piscar o display e grava os valores na memória.
         pisca_display = 0;
-        EEPROM.write(1,temp_max);
-        EEPROM.write(2,temp_min);
-        EEPROM.write(3,temp_alarme);
+        EEPROM.write(1,temp_ref);
+        EEPROM.write(2,temp_alarme_min);
+        EEPROM.write(3,temp_alarme_max);
         Serial.print("Dados gravados!\n");
       }
     }
@@ -338,11 +338,11 @@ void inicializa_timer1()
 void inicializa_gpio() // Verificar os pinos escolhidos
 {  
   pinMode(rele_abre, OUTPUT);
-  digitalWrite(rele_abre, LOW);
+  digitalWrite(rele_abre, HIGH);
   pinMode(rele_fecha, OUTPUT);
-  digitalWrite(rele_fecha, LOW);
+  digitalWrite(rele_fecha, HIGH);
   pinMode(rele_alarme, OUTPUT);
-  digitalWrite(rele_alarme, LOW); 
+  digitalWrite(rele_alarme, HIGH); 
   
   pinMode(fim_curso_abre, INPUT);
   pinMode(fim_curso_fecha, INPUT);
@@ -357,27 +357,27 @@ void inicializa_gpio() // Verificar os pinos escolhidos
 void inicializa_eeprom()
 {  
 // Inicializa os limites de temperatura para o primeiro uso
-if(EEPROM.read(0) == 78){ // Se está escrito 5 no endereço 0 é porque o uC já foi inicializado, então lê os valores da memória.
-  temp_max = EEPROM.read(1);
-  temp_min = EEPROM.read(2);
-  temp_alarme = EEPROM.read(3);  
+if(EEPROM.read(0) == 78){ // Se está escrito 78 no endereço 0 é porque o uC já foi inicializado, então lê os valores da memória.
+  temp_ref = EEPROM.read(1);
+  temp_alarme_min = EEPROM.read(2);
+  temp_alarme_max = EEPROM.read(3);  
   }
   else // Senão inicializa com os seguintes valores
   {
   EEPROM.write(0,78); // Valor para identificar que o uC já foi inicializado antes.
-  EEPROM.write(1,temp_max);
-  EEPROM.write(2,temp_min);
-  EEPROM.write(3,temp_alarme);
+  EEPROM.write(1,temp_ref);
+  EEPROM.write(2,temp_alarme_min);
+  EEPROM.write(3,temp_alarme_max);
   }
   
-  Serial.print("temp_max = ");
-  Serial.print(temp_max);
+  Serial.print("temp_ref = ");
+  Serial.print(temp_ref);
   Serial.print("\n");
-  Serial.print("temp_min = ");
-  Serial.print(temp_min);
+  Serial.print("temp_alarme_min = ");
+  Serial.print(temp_alarme_min);
   Serial.print("\n");
-  Serial.print("temp_alarme = ");
-  Serial.print(temp_alarme);
+  Serial.print("temp_alarme_max = ");
+  Serial.print(temp_alarme_max);
   Serial.print("\n");
 }
 
@@ -392,15 +392,10 @@ void inicializa_display()
   // Inicialização do Display  
   mydisplay.shutdown(0, false);  // turns on display
   mydisplay.setIntensity(0, 15); // 0 a 15 = brightest
-  mydisplay.setScanLimit(0,7); // de 0 a 7 Indica quantos dígitos serão ligados.
+  mydisplay.setScanLimit(0,3); // de 0 a 7 Indica quantos dígitos serão ligados.
   mydisplay.setDigit(0, 0, 0, false); //setDigit(int addr, int digit, byte value, boolean dp)
-  mydisplay.setDigit(0, 1, 0, false); // setDigit(chip, posição, número, naosei)
+  mydisplay.setDigit(0, 1, 0, false); // setDigit(chip, posição, número, dot)
   mydisplay.setDigit(0, 2, 0, false);
-  mydisplay.setDigit(0, 3, 0, false); //testar com true
-  mydisplay.setDigit(0, 4, 0, false);
-  mydisplay.setDigit(0, 5, 0, false);
-  mydisplay.setDigit(0, 6, 0, false);
-  mydisplay.setDigit(0, 7, 0, false);
 //  mydisplay.clearDisplay(0); // Deve fazer a mesma coisa que o escrito acima.
 ///////////////////////////////////
 }
