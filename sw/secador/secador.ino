@@ -30,7 +30,7 @@ LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será neces
 
 // Variáveis utilizadas no programa. byte +-128
 int temp_ref = 120, temp_alarme_min = 110, temp_alarme_max = 125; //Valores default para primeira inicialização.
-byte segundo = 0, temperatura = 0, alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
+byte segundo = 0, temperatura = 0, alarme = 0, set_alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
 int i = 0, alarmecount = 0, pisca_count = 0, pisca_delay = 0;
 
 
@@ -115,24 +115,36 @@ void loop() {
     }
 
     // Acionamento da sirene
-    if(temperatura > temp_alarme_max)
-    {
-      if(alarme == 0) // flag para indicar que já tocou o alarme.
-      {
-        alarme = 1;
-        Serial.print("Acionando Alarme\n"); 
-        digitalWrite(rele_alarme, LOW); // Liga o alarme.
-        alarmecount = 10;
-      }
-    }else{
-      alarme = 0;
+    if(temperatura == temp_ref){
+      set_alarme = 1;
     }
-
-    
+    if(set_alarme == 1){    // flag para indicar que já chegou a temperatura de operação pelo menos uma vez e não acionar o alarme logo ao ligar.
+      if(temperatura > temp_alarme_max)
+      {
+        if(alarme == 0) // flag para indicar que já tocou o alarme.
+        {
+          alarme = 1;
+          Serial.print("Acionando Alarme\n"); 
+          digitalWrite(rele_alarme, LOW); // Liga o alarme.
+          alarmecount = 11;
+        }
+      }else{
+        if(temperatura < temp_alarme_min)
+        {
+          if(alarme == 0) // flag para indicar que já tocou o alarme.
+          {
+            alarme = 1;
+            Serial.print("Acionando Alarme\n"); 
+            digitalWrite(rele_alarme, LOW); // Liga o alarme.
+            alarmecount = 11;
+          }
+        }else{
+          alarme = 0;
+        } 
+      }
+    }
   }
-  
 }
-
 /// --------------------------
 /// Interrupção em 200ms
 /// --------------------------
@@ -151,14 +163,12 @@ void timerIsr()
    // Contador para desligar o alarme.
     if (alarmecount > 0){
       alarmecount--;
-    }else{
-      if (alarmecount == 0){
-        digitalWrite(rele_alarme, HIGH);        // Desliga o alarme depois de zerar alarmecount.
-        Serial.print("Alarme desligado\n");     // Escreve na tela apenas uma vez.
-      }else{
-        digitalWrite(rele_alarme, HIGH);        // Mantém o alarme desligado.
-      }
     }
+    if (alarmecount == 1){
+      digitalWrite(rele_alarme, HIGH);        // Desliga o alarme depois de zerar alarmecount.
+      Serial.print("Alarme desligado\n");     // Escreve na tela apenas uma vez.
+    }
+    
 
   //////////////////////////////
   // código para piscar o display de acordo com o menu selecionado.
