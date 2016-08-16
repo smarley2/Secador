@@ -10,38 +10,39 @@
 #include <LedControl.h>
 #include <EEPROM.h>
 #include <TimerOne.h>
-#include <LiquidCrystal.h> // http://blog.filipeflop.com/display/controlando-um-lcd-16x2-com-arduino.html
+////////// #include <LiquidCrystal.h> // http://blog.filipeflop.com/display/controlando-um-lcd-16x2-com-arduino.html
 
 ///////////// Pinos utilizados  /////////////////////
 // inputs: DIN pin, CLK pin, LOAD (CS) pin. number of chips
 LedControl mydisplay = LedControl(2, 1, 0, 1);
 
 // Rele para abrir, fechar e sirene, fim de curso;
-int rele_abre = 3, fim_curso_abre = 4, rele_fecha = 5, fim_curso_fecha = 6, rele_alarme = 7;
+int rele_abre1 = 3, rele_abre2 = 4, fim_curso_abre = 8, rele_fecha1 = 5, rele_fecha2 = 6, fim_curso_fecha = 9, rele_alarme = 7;
 
 // Botão para menu, decrementar e incrementar;
-int input_menu = 8, input_dec = 9, input_inc = 10;
+int input_menu = 10, input_dec = 11, input_inc = 12;
 
 // Define os pinos que serão utilizados para ligação ao display
 // LiquidCrystal lcd(<pino RS>, <pino enable>, <pino D4>, <pino D5>, <pino D6>, <pino D7>)
-LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será necessário utilizar os canais analógicos como digital.
+////////// LiquidCrystal lcd(12, 11, A5, A4, A3, A2); // para os pinos de dados será necessário utilizar os canais analógicos como digital.
 //////////////////////////////////////////////////////
 
 
 // Variáveis utilizadas no programa. byte +-128
 int temp_ref = 120, temp_alarme_min = 110, temp_alarme_max = 125; //Valores default para primeira inicialização.
-byte segundo = 0, temperatura = 0, alarme = 0, set_alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
+byte segundo = 0, alarme = 0, set_alarme = 0, digito = 0, pisca_display = 0, menu_select = 0;
 int i = 0, alarmecount = 0, pisca_count = 0, pisca_delay = 0;
+long temperatura = 0;
 
 
 void setup() 
 {
-  lcd.begin(16, 2);
-  lcd.clear(); //Limpa a tela
-  lcd.setCursor(0, 0); //Posiciona o cursor na coluna 0, linha 0;
-  lcd.print("Display"); //Envia o texto entre aspas para o LCD
-  lcd.setCursor(0, 1); //Posiciona o cursor na coluna 0, linha 1;
-  lcd.print("Inicializado"); //Envia o texto entre aspas para o LCD
+  //lcd.begin(16, 2);
+  //lcd.clear(); //Limpa a tela
+  //lcd.setCursor(0, 0); //Posiciona o cursor na coluna 0, linha 0;
+  //lcd.print("Display"); //Envia o texto entre aspas para o LCD
+  //lcd.setCursor(0, 1); //Posiciona o cursor na coluna 0, linha 1;
+  //lcd.print("Inicializado"); //Envia o texto entre aspas para o LCD
   
   // initialize serial communications at 9600 bps:
   Serial.begin(9600); // testa com 9600 mas depois aumenta para o máximo que der, para o uC não perder tempo escrevendo
@@ -71,7 +72,7 @@ void loop() {
     // VOUT = –550 mV at –55°C
     // Fundo de escala em 5V = 500°C = 1023;
     // Então para passar para °C a medição, multiplica por 500 e depois divide por 1023
-    temperatura = (analogRead(0)*500) / 1023; // Lê o canal 0
+    temperatura = (analogRead(0)*500L) / 1023; // Lê o canal 0
     Serial.print("Temperatura = ");
     Serial.print(temperatura);
     Serial.print("C\n");
@@ -90,11 +91,14 @@ void loop() {
       if(digitalRead(fim_curso_fecha) == 1)         // Verifica se a janela ainda não está fechada.
       {
         Serial.print("Fechando Ar\n"); 
-        digitalWrite(rele_abre, HIGH);              // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        digitalWrite(rele_abre1, HIGH);              // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        digitalWrite(rele_abre2, HIGH);              // Desliga o outro rele para garantir que não vai dar curto na fonte.
         delay(300);                                 // Aguarda 300ms para garantir que o rele está desligado.
-        digitalWrite(rele_fecha, LOW);              // Liga o relé para fechar. 
+        digitalWrite(rele_fecha1, LOW);              // Liga o relé para fechar. 
+        digitalWrite(rele_fecha2, LOW);              // Liga o relé para fechar.
         while(digitalRead(fim_curso_fecha)==1){}    // Fica preso aqui até que o input se torne 0.
-        digitalWrite(rele_fecha, HIGH);             // Desliga o relé depois de atingir o fim de curso.
+        digitalWrite(rele_fecha1, HIGH);             // Desliga o relé depois de atingir o fim de curso.
+        digitalWrite(rele_fecha2, HIGH);             // Desliga o relé depois de atingir o fim de curso.
         Serial.print("Janela fechada\n"); 
       }
     }
@@ -105,11 +109,14 @@ void loop() {
       if(digitalRead(fim_curso_abre) == 1)          // Verifica se a janela ainda não está aberta.
       {
         Serial.print("Abrindo Ar\n"); 
-        digitalWrite(rele_fecha, HIGH);             // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        digitalWrite(rele_fecha1, HIGH);             // Desliga o outro rele para garantir que não vai dar curto na fonte.
+        digitalWrite(rele_fecha2, HIGH);             // Desliga o outro rele para garantir que não vai dar curto na fonte.
         delay(300);                                 // Aguarda 300ms para garantir que o rele está desligado.
-        digitalWrite(rele_abre, LOW);               // Liga o relé para abrir.
+        digitalWrite(rele_abre1, LOW);               // Liga o relé para abrir.
+        digitalWrite(rele_abre2, LOW);               // Liga o relé para abrir.
         while(digitalRead(fim_curso_abre)==1){}     // Fica preso aqui até que o input se torne 0.
-        digitalWrite(rele_abre, HIGH);              // Desliga o relé depois de atingir o fim de curso.
+        digitalWrite(rele_abre1, HIGH);              // Desliga o relé depois de atingir o fim de curso.
+        digitalWrite(rele_abre2, HIGH);              // Desliga o relé depois de atingir o fim de curso.
         Serial.print("Janela aberta\n"); 
       }
     }
@@ -347,10 +354,14 @@ void inicializa_timer1()
 /// --------------------------
 void inicializa_gpio() // Verificar os pinos escolhidos
 {  
-  pinMode(rele_abre, OUTPUT);
-  digitalWrite(rele_abre, HIGH);
-  pinMode(rele_fecha, OUTPUT);
-  digitalWrite(rele_fecha, HIGH);
+  pinMode(rele_abre1, OUTPUT);
+  digitalWrite(rele_abre1, HIGH);
+  pinMode(rele_abre2, OUTPUT);
+  digitalWrite(rele_abre2, HIGH);
+  pinMode(rele_fecha1, OUTPUT);
+  digitalWrite(rele_fecha1, HIGH);
+  pinMode(rele_fecha2, OUTPUT);
+  digitalWrite(rele_fecha2, HIGH);
   pinMode(rele_alarme, OUTPUT);
   digitalWrite(rele_alarme, HIGH); 
   
@@ -402,7 +413,7 @@ void inicializa_display()
   // Inicialização do Display  
   mydisplay.shutdown(0, false);  // turns on display
   mydisplay.setIntensity(0, 15); // 0 a 15 = brightest
-  mydisplay.setScanLimit(0,3); // de 0 a 7 Indica quantos dígitos serão ligados.
+  mydisplay.setScanLimit(0,2); // de 0 a 7 Indica quantos dígitos serão ligados.
   mydisplay.setDigit(0, 0, 0, false); //setDigit(int addr, int digit, byte value, boolean dp)
   mydisplay.setDigit(0, 1, 0, false); // setDigit(chip, posição, número, dot)
   mydisplay.setDigit(0, 2, 0, false);
